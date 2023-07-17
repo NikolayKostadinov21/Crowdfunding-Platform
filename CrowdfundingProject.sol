@@ -44,18 +44,18 @@ contract CrowdFundingPlatform is Ownable {
         _;
     }
 
-    modifier isPastDeadline(uint256 timeline) {
-        require(timeline > maxDuration, "The timeline hasn't exceeded!");
-        _;
-    }
-
     modifier isPastTimeline(uint256 timeline) {
-        require(timeline > maxDuration, "The timeline hasn't exceeded!");
+        require(block.timestamp > timeline, "The timeline hasn't exceeded!");
         _;
     }
 
     modifier isBeforeDeadline(uint256 timeline) {
-        require(timeline <= maxDuration, "The timeline has exceeded!");
+        require(timeline <= maxDuration, "The deadline has exceeded!");
+        _;
+    }
+
+    modifier isBeforeTimeline(uint256 timeline) {
+        require(block.timestamp <= timeline, "The timeline has exceeded!");
         _;
     }
 
@@ -65,7 +65,7 @@ contract CrowdFundingPlatform is Ownable {
     }
 
     modifier onlyIfNotSuccessful(uint256 projectId) {
-        require(!crowdFundingProjects[projectId].successful, "Project isn't successful, you can't refund!");
+        require(!crowdFundingProjects[projectId].successful, "Project is successful, you can't refund!");
         _;
     }
 
@@ -98,19 +98,20 @@ contract CrowdFundingPlatform is Ownable {
 
     function investFunds(IERC20 _token, uint256 projectId, uint256 amount)
         projectExists(projectId)
-        isBeforeDeadline(crowdFundingProjects[projectId].timeline)
+        isBeforeTimeline(crowdFundingProjects[projectId].timeline)
         external
     {
         require(amount > 0, "Amount cannot be equal to zero!");
         require(!crowdFundingProjects[projectId].successful, "The project has already achieved its goal!");
-        if (crowdFundingProjects[projectId].fundingGoal <= amount + crowdFundingProjects[projectId].investedFunds) {
-            crowdFundingProjects[projectId].successful = true;
-        }
+
+        _token.safeTransferFrom(msg.sender, address(this), amount);
 
         crowdFundingProjects[projectId].investedFunds += amount;
         customerInvestedFunds[projectId][msg.sender] += amount;
+        if (crowdFundingProjects[projectId].fundingGoal <= crowdFundingProjects[projectId].investedFunds) {
+            crowdFundingProjects[projectId].successful = true;
+        }
 
-        _token.safeTransfer(address(this), amount);
         emit FundsInvested(_token, crowdFundingProjects[projectId], amount, msg.sender);
     }
 
@@ -118,29 +119,22 @@ contract CrowdFundingPlatform is Ownable {
 
     function withdrawFunds(IERC20 _token, uint256 projectId)
         projectExists(projectId)
-        isPastDeadline(crowdFundingProjects[projectId].timeline)
         onlyOwnerOfProject(projectId)
         onlyIfSuccessful(projectId)
         external
     {
-        _token.safeTransfer(msg.sender, address(this).balance);
+        _token.safeTransfer(msg.sender, crowdFundingProjects[projectId].investedFunds);
         delete crowdFundingProjects[projectId];
-        emit FundsWithdrawn(_token, crowdFundingProjects[projectId], address(this).balance, msg.sender);
+        emit FundsWithdrawn(_token, crowdFundingProjects[projectId], crowdFundingProjects[projectId].investedFunds, msg.sender);
     }
 
     function refundFunds(IERC20 _token, uint256 projectId)
         projectExists(projectId)
-        isPastDeadline(crowdFundingProjects[projectId].timeline)
+        isPastTimeline(crowdFundingProjects[projectId].timeline)
         onlyIfNotSuccessful(projectId)
         onlyNonRefundedInvestors(projectId)
         external
     {
-        // 1. Check if beneficiary has invested something in the particular campaign
-        //    1.1 if yes, has he already refunded all of his tokens -> if that's true prevent him from repeating this function
-        //    1.2 if no, go to 2.
-        // 2. Transfer tokens to beneficiary
-        // 3. If everyone has refunded successfully their tokens -> Delete the campaign
-        // 4. Emit an event
         _token.safeTransfer(msg.sender, customerInvestedFunds[projectId][msg.sender]);
         crowdFundingProjects[projectId].investedFunds -= customerInvestedFunds[projectId][msg.sender];
         if (crowdFundingProjects[projectId].investedFunds == 0) {
