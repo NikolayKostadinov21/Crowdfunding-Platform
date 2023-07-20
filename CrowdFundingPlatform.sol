@@ -1,20 +1,17 @@
 // SPDX-License-Identifier: GPL-3.0
 
-import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/access/Ownable.sol";
 import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/ERC20/IERC20.sol";
 import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/ERC20/utils/SafeERC20.sol";
 
 pragma solidity ^0.8.20;
 
-contract CrowdFundingPlatform is Ownable {
+contract CrowdFundingPlatform {
 
     /// Allowing for IERC20 type from the SafeERC20 library to be accessed in the contract.
     using SafeERC20 for IERC20;
 
     uint256 immutable maxDuration;
     uint256 public counter;
-
-    address private immutable _owner;
 
     struct CrowdFundingProject {
         uint256 investedFunds;
@@ -29,13 +26,14 @@ contract CrowdFundingPlatform is Ownable {
     event FundsInvested(IERC20 _token, CrowdFundingProject crowdFundingProject, uint256 amount, address indexed investor);
     event FundsWithdrawn(IERC20 _token, CrowdFundingProject crowdFundingProject, uint256 amount, address indexed owner);
     event FundsRefunded(IERC20 _token, CrowdFundingProject crowdFundingProject, uint256 amount, address indexed investor);
+    event FundsRevoked(IERC20 _token, CrowdFundingProject crowdFundingProject, uint256 amount, address indexed investor);
+    event TerminateCrowdfundingProject(CrowdFundingProject crowdFundingProject, address indexed owner);
 
     mapping(uint256 => CrowdFundingProject) crowdFundingProjects;
     mapping(uint256 => mapping(address => uint256)) public customerInvestedFunds;
 
-    constructor(uint256 _maxDuration) Ownable() {
+    constructor(uint256 _maxDuration) {
         require(_maxDuration > block.timestamp, "The duration cannot be before the current time");
-        _owner = _msgSender();
         maxDuration = _maxDuration;
     }
 
@@ -96,6 +94,15 @@ contract CrowdFundingPlatform is Ownable {
         emit InitializeCrowdfundingProject(crowdFundingProjects[counter]);
     }
 
+    function terminateCrowdfundingProject(uint256 projectId)
+        isBeforeTimeline(crowdFundingProjects[projectId].timeline)
+        external
+    {
+        crowdFundingProjects[projectId].timeline = 0;
+        crowdFundingProjects[projectId].successful = false;
+        emit TerminateCrowdfundingProject(crowdFundingProjects[projectId], msg.sender);
+    }
+
     function investFunds(IERC20 _token, uint256 projectId, uint256 amount)
         projectExists(projectId)
         isBeforeTimeline(crowdFundingProjects[projectId].timeline)
@@ -115,7 +122,22 @@ contract CrowdFundingPlatform is Ownable {
         emit FundsInvested(_token, crowdFundingProjects[projectId], amount, msg.sender);
     }
 
-    function revokeFunds(uint256 amount) external {}
+    function revokeFunds(IERC20 _token, uint256 projectId, uint256 amount)
+        external
+        projectExists(projectId)
+        isBeforeTimeline(crowdFundingProjects[projectId].timeline)
+        onlyNonRefundedInvestors(projectId)
+    {
+        require(amount > 0, "Amount cannot be equal to zero!");
+        require(!crowdFundingProjects[projectId].successful, "The project has already achieved its goal!");
+
+        _token.transfer(msg.sender, amount);
+
+        crowdFundingProjects[projectId].investedFunds -= amount;
+        customerInvestedFunds[projectId][msg.sender] -= amount;
+
+        emit FundsRevoked(_token, crowdFundingProjects[projectId], customerInvestedFunds[projectId][msg.sender], msg.sender);
+    }
 
     function withdrawFunds(IERC20 _token, uint256 projectId)
         projectExists(projectId)
