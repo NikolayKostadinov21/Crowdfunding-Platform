@@ -95,7 +95,10 @@ contract CrowdFundingPlatform {
     }
 
     function terminateCrowdfundingProject(uint256 projectId)
+        projectExists(projectId)
         isBeforeTimeline(crowdFundingProjects[projectId].timeline)
+        onlyOwnerOfProject(projectId)
+        onlyIfNotSuccessful(projectId)
         external
     {
         crowdFundingProjects[projectId].timeline = 0;
@@ -130,6 +133,7 @@ contract CrowdFundingPlatform {
     {
         require(amount > 0, "Amount cannot be equal to zero!");
         require(!crowdFundingProjects[projectId].successful, "The project has already achieved its goal!");
+        require(customerInvestedFunds[projectId][msg.sender] >= amount, "You don't have that amount of tokens!");
 
         _token.transfer(msg.sender, amount);
 
