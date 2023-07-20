@@ -8,9 +8,10 @@ contract FundMeFaucet {
     IERC20 public FundMeToken;
 
     uint256 public constant lockTime = 1 minutes;
-    uint256 public constant withdrawalAmount = 50 * (10**18);
+    uint256 public constant withdrawalAmount = 0.1 * (10**18);
 
-    mapping(address => uint256) nextAccessTime;
+    mapping(address => uint256) public nextAccessTime;
+    mapping(address => uint256) public exchangedFunds;
 
     event Deposit(address indexed from, uint256 indexed amount);
     event TransferRequestedTokens(address indexed from, uint256 indexed amount);
@@ -27,13 +28,21 @@ contract FundMeFaucet {
         return FundMeToken.balanceOf(address(this));
     }
 
+    function exchangeFunds() external payable {
+        require(msg.value != 0, "Exchanging value cannot be equal to zero!");
+        exchangedFunds[msg.sender] += msg.value;
+    }
+
     function requestTokens() external {
-        require(msg.sender != address(0), "Request must not originate from a zero account");
-        require(block.timestamp >= nextAccessTime[msg.sender],"Insufficient time elapsed since last withdrawal - try again later.");
-        require(FundMeToken.balanceOf(address(this)) >= withdrawalAmount, "Insufficient balance in faucet for withdrawal request");
+        require(msg.sender != address(0), "Request cannot originate from a zero account!");
+        require(block.timestamp >= nextAccessTime[msg.sender],"Insufficient time elapsed since last withdrawal!");
+        require(FundMeToken.balanceOf(address(this)) >= withdrawalAmount, "Insufficient balance in faucet for withdrawal request!");
+        require(exchangedFunds[msg.sender] >= withdrawalAmount, "You don't have enough exchanged funds for FundMe token!");
 
         nextAccessTime[msg.sender] = block.timestamp + lockTime;
         FundMeToken.transfer(msg.sender, withdrawalAmount);
+        exchangedFunds[msg.sender] -= withdrawalAmount;
+
         emit TransferRequestedTokens(msg.sender, withdrawalAmount);
     }
 }
