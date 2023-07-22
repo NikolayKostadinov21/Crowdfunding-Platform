@@ -3,7 +3,8 @@
 pragma solidity ^0.8.20;
 
 import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-import {UUPSUtils} from "./UUPSUtils.sol";
+
+import { UUPSUtils } from "./UUPSUtils.sol";
 /**
  * @title UUPS (Universal Upgradeable Proxy Standard) Proxy
  *
