@@ -3,7 +3,7 @@
 pragma solidity ^0.8.20;
 
 import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-import {ERC1967Utils} from "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/proxy/ERC1967/ERC1967Utils.sol";
+import {UUPSUtils} from "./UUPSUtils.sol";
 /**
  * @title UUPS (Universal Upgradeable Proxy Standard) Proxy
  *
@@ -16,23 +16,21 @@ import {ERC1967Utils} from "https://github.com/OpenZeppelin/openzeppelin-contrac
  */
 abstract contract UUPSProxy is ERC1967Proxy {
 
-        /**
+    /**
      * @dev Proxy initialization function.
      *      This should only be called once and it is permission-less.
      * @param initialAddress Initial logic contract code address to be used.
      */
-    function initializeProxy(address initialAddress, bytes memory data) external {
+    function initializeProxy(address initialAddress) external {
         require(initialAddress != address(0), "UUPSProxy: zero address");
-        require(_implementation() == address(0), "UUPSProxy: already initialized");
-
-        // Create your own library
-        ERC1967Utils.upgradeToAndCall(initialAddress, data);
+        require(UUPSUtils.implementation() == address(0), "UUPSProxy: already initialized");
+        UUPSUtils.setImplementation(initialAddress);
     }
 
     /// @dev Proxy._implementation implementation
     function _implementation() internal virtual override view returns (address)
     {
-        return _implementation();
+        return UUPSUtils.implementation();
     }
 
 }
