@@ -2,16 +2,18 @@
 
 import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/ERC20/IERC20.sol";
 import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/ERC20/utils/SafeERC20.sol";
+import "../Proxy/UUPSProxiable.sol";
 
 pragma solidity ^0.8.20;
 
-contract CrowdFundingPlatform {
+contract CrowdFundingPlatform is UUPSProxiable {
 
     /// Allowing for IERC20 type from the SafeERC20 library to be accessed in the contract.
     using SafeERC20 for IERC20;
 
-    uint256 immutable maxDuration;
+    uint256 maxDuration;
     uint256 public counter;
+    address owner;
 
     struct CrowdFundingProject {
         uint256 investedFunds;
@@ -32,9 +34,10 @@ contract CrowdFundingPlatform {
     mapping(uint256 => CrowdFundingProject) crowdFundingProjects;
     mapping(uint256 => mapping(address => uint256)) public customerInvestedFunds;
 
-    constructor(uint256 _maxDuration) {
+    function initialize(uint256 _maxDuration) initializer public {
         require(_maxDuration > block.timestamp, "The duration cannot be before the current time");
         maxDuration = _maxDuration;
+        owner = msg.sender;
     }
 
     modifier projectExists(uint256 projectId) {
@@ -74,6 +77,11 @@ contract CrowdFundingPlatform {
 
     modifier onlyNonRefundedInvestors(uint256 projectId) {
         require(customerInvestedFunds[projectId][msg.sender] > 0, "Only non refunded investors allowed!");
+        _;
+    }
+
+    modifier onlyOwner {
+        require(msg.sender == owner, "Unauthorized!");
         _;
     }
 
@@ -168,5 +176,9 @@ contract CrowdFundingPlatform {
         }
         delete customerInvestedFunds[projectId][msg.sender];
         emit FundsRefunded(_token, crowdFundingProjects[projectId], customerInvestedFunds[projectId][msg.sender], msg.sender);
+    }
+
+    function updateCode(address newAddress) onlyOwner external {
+        _updateCodeAddress(newAddress);
     }
 }

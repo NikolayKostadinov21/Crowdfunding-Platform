@@ -2,12 +2,12 @@
 
 pragma solidity ^0.8.20;
 
-import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/proxy/utils/Initializable.sol";
-
 import { UUPSUpgradeable } from "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/proxy/utils/UUPSUpgradeable.sol";
+import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/proxy/utils/Initializable.sol";
 import { UUPSUtils } from "./UUPSUtils.sol";
 
-abstract contract UUPSProxiable is Initializable {
+contract UUPSProxiable is Initializable {
+    event CodeUpdated(bytes32 uuid, address codeAddress);
     /**
      * @dev Get current implementation code address.
      */
@@ -15,12 +15,6 @@ abstract contract UUPSProxiable is Initializable {
     {
         return UUPSUtils.implementation();
     }
-
-    function updateCode(address newAddress) external virtual;
-
-    // allows to mark logic contracts as initialized in order to reduce the attack surface
-    // solhint-disable-next-line no-empty-blocks
-    function castrate() external initializer { }
 
     /**
      * @dev Proxiable UUID marker function, this would help to avoid wrong logic
@@ -52,6 +46,4 @@ abstract contract UUPSProxiable is Initializable {
         UUPSUtils.setImplementation(newAddress);
         emit CodeUpdated(proxiableUUID(), newAddress);
     }
-
-    event CodeUpdated(bytes32 uuid, address codeAddress);
 }

@@ -3,7 +3,7 @@
 pragma solidity ^0.8.20;
 
 import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-
+import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/proxy/Proxy.sol";
 import { UUPSUtils } from "./UUPSUtils.sol";
 /**
  * @title UUPS (Universal Upgradeable Proxy Standard) Proxy
@@ -15,8 +15,7 @@ import { UUPSUtils } from "./UUPSUtils.sol";
  *   return values and bubbling of failures.
  * - It defines a fallback function that delegates all calls to the implementation.
  */
-abstract contract UUPSProxy is ERC1967Proxy {
-
+contract UUPSProxy is Proxy {
     /**
      * @dev Proxy initialization function.
      *      This should only be called once and it is permission-less.
@@ -33,5 +32,4 @@ abstract contract UUPSProxy is ERC1967Proxy {
     {
         return UUPSUtils.implementation();
     }
-
 }
