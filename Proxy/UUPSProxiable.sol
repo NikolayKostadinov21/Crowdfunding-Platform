@@ -17,11 +17,11 @@ abstract contract UUPSProxiable is OwnableUpgradeable {
     /**
      * @notice To be overwritten by implementation contract
      * @dev In the overwritten body invoke the _updateCodeAddress function
-     * @param address the new implementation contract address
+     * @param newAddress the new implementation contract address
      */
     function updateCode(address newAddress) external virtual;
 
-    /// @return address Get current implementation code address
+    /// @return codeAddress Get current implementation code address
     function getCodeAddress()
         public
         view
