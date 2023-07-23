@@ -37,6 +37,43 @@ contract CrowdFundingPlatform is UUPSProxiable {
     }
 
     // ================================================================
+    // |                           ERRORS                             |
+    // ================================================================
+
+    /// @notice Error thrown if the project doesn't exists
+    error PROJECT_DOESNT_EXIST();
+
+    /// @notice Error thrown if the timeline hasn't exceeded
+    error TIMELINE_HASNT_EXCEEDED();
+
+    /// @notice Error thrown if the deadline has exceeded
+    error THE_DEADLINE_HAS_EXCEEDED();
+
+    /// @notice Error thrown if the timeline has exceeded
+    error THE_TIMELINE_HAS_EXCEEDED();
+
+    /// @notice Error thrown if project isn't successful, i.e. you can't withdraw
+    error PROJECT_ISNT_SUCCESSFUL();
+
+    /// @notice Error thrown if project is successful, i.e. you can't refund
+    error PROJECT_IS_SUCCESSFUL();
+
+    /// @notice Error thrown if non-owner of a project invokes particular function
+    error NOT_THE_OWNER_OF_THE_PROJECT();
+
+    /// @notice Error thrown when only non refunded investors are allowed
+    error ONLY_NON_REFUNDED_INVESTORS_ALLOWED();
+
+    /// @notice Error thrown if the amount is equal to zero
+    error AMOUNT_CANNOT_BE_ZERO();
+
+    /// @notice Error thrown if the project has already achieved its goal
+    error PROJECT_ALREADY_ACHIEVED_ITS_GOAL();
+
+    /// @notice Error thrown when you don't have that amount of tokens
+    error NOT_ENOUGH_TOKENS();
+
+    // ================================================================
     // |                           EVENTS                             |
     // ================================================================
 
@@ -85,49 +122,49 @@ contract CrowdFundingPlatform is UUPSProxiable {
 
     /// @dev Checks if the project exists in the platform
     modifier projectExists(uint256 projectId) {
-        require(crowdFundingProjects[projectId].exists, "The project doesn't exists!");
+        if (!crowdFundingProjects[projectId].exists) revert PROJECT_DOESNT_EXIST();
         _;
     }
 
     /// @dev Checks if the timeline has exceeded
     modifier isPastTimeline(uint256 timeline) {
-        require(block.timestamp > timeline, "The timeline hasn't exceeded!");
+        if (!(block.timestamp > timeline)) revert TIMELINE_HASNT_EXCEEDED();
         _;
     }
 
     /// @dev Checks if the deadline has exceeded
     modifier isBeforeDeadline(uint256 timeline) {
-        require(timeline <= maxDuration, "The deadline has exceeded!");
+        if (!(timeline <= maxDuration)) revert THE_DEADLINE_HAS_EXCEEDED();
         _;
     }
 
     /// @dev Checks if the timeline isn't reached
     modifier isBeforeTimeline(uint256 timeline) {
-        require(block.timestamp <= timeline, "The timeline has exceeded!");
+        if (!(block.timestamp <= timeline)) revert THE_TIMELINE_HAS_EXCEEDED();
         _;
     }
 
     /// @dev Checks if the successful flag for a project is true
     modifier onlyIfSuccessful(uint256 projectId) {
-        require(crowdFundingProjects[projectId].successful, "Project isn't successful, you can't withdraw!");
+        if (!(crowdFundingProjects[projectId].successful)) revert PROJECT_ISNT_SUCCESSFUL();
         _;
     }
 
     /// @dev Checks if the successful flag for a project is false
     modifier onlyIfNotSuccessful(uint256 projectId) {
-        require(!crowdFundingProjects[projectId].successful, "Project is successful, you can't refund!");
+        if (crowdFundingProjects[projectId].successful) revert PROJECT_IS_SUCCESSFUL();
         _;
     }
 
     /// @dev Checks if the invoker is the owner of the project
     modifier onlyOwnerOfProject(uint256 projectId) {
-        require(msg.sender == crowdFundingProjects[projectId].owner, "Unauthorized!");
+        if (!(msg.sender == crowdFundingProjects[projectId].owner)) revert NOT_THE_OWNER_OF_THE_PROJECT();
         _;
     }
 
     /// @dev Checks if you have investments in a project and if you have already been refunded for your investments
     modifier onlyNonRefundedInvestors(uint256 projectId) {
-        require(customerInvestedFunds[projectId][msg.sender] > 0, "Only non refunded investors allowed!");
+        if (!(customerInvestedFunds[projectId][msg.sender] > 0)) revert ONLY_NON_REFUNDED_INVESTORS_ALLOWED();
         _;
     }
 
@@ -196,8 +233,8 @@ contract CrowdFundingPlatform is UUPSProxiable {
         external
     {
         CrowdFundingProject storage crowdFundingProject = crowdFundingProjects[projectId];
-        require(amount > 0, "Amount cannot be equal to zero!");
-        require(!crowdFundingProject.successful, "The project has already achieved its goal!");
+        if (!(amount > 0)) revert AMOUNT_CANNOT_BE_ZERO();
+        if (crowdFundingProject.successful) revert PROJECT_ALREADY_ACHIEVED_ITS_GOAL();
 
         FundMeToken.safeTransferFrom(msg.sender, address(this), amount);
 
@@ -231,9 +268,9 @@ contract CrowdFundingPlatform is UUPSProxiable {
     {
         uint256 _investedFunds = customerInvestedFunds[projectId][msg.sender];
         CrowdFundingProject storage crowdFundingProject = crowdFundingProjects[projectId];
-        require(amount > 0, "Amount cannot be equal to zero!");
-        require(!crowdFundingProject.successful, "The project has already achieved its goal!");
-        require(_investedFunds >= amount, "You don't have that amount of tokens!");
+        if (!(amount > 0)) revert AMOUNT_CANNOT_BE_ZERO();
+        if (crowdFundingProject.successful) revert PROJECT_ALREADY_ACHIEVED_ITS_GOAL();
+        if (_investedFunds < amount) revert NOT_ENOUGH_TOKENS();
 
         FundMeToken.transfer(msg.sender, amount);
 
@@ -302,7 +339,11 @@ contract CrowdFundingPlatform is UUPSProxiable {
      * @dev Can be invoked only by the owner of the platform contract
      * @param newAddress the address of the new logic contract
      */
-    function updateCode(address newAddress) onlyOwner override external {
+    function updateCode(address newAddress)
+        onlyOwner
+        override
+        external
+    {
         _updateCodeAddress(newAddress);
     }
 }
