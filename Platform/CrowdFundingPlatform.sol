@@ -18,6 +18,8 @@ contract CrowdFundingPlatform is UUPSProxiable {
     uint256 maxDuration;
     /// @notice Counter that increments on every new project. Acts as ID for project
     uint256 public counter;
+    /// @notice FundMe token
+    IERC20 FundMeToken;
 
     struct CrowdFundingProject {
         /// @notice The total amount of invested funds in a project
@@ -69,11 +71,16 @@ contract CrowdFundingPlatform is UUPSProxiable {
         _disableInitializers();
     }
 
-    // @audit missed comment
-    function initialize(uint256 _maxDuration) initializer public {
+    /**
+     * @dev initialize function that has the role of implementation contract constructor
+     * @dev Setting the owner to be the sender and declaring the maximal duration of the platform
+     * @param _maxDuration duration of the platform
+     */
+    function initialize(uint256 _maxDuration, IERC20 _fundMeToken) initializer public {
         require(_maxDuration > block.timestamp, "The duration cannot be before the current time");
         __Ownable_init(msg.sender);
         maxDuration = _maxDuration;
+        FundMeToken = _fundMeToken;
     }
 
     /// @dev Checks if the project exists in the platform
@@ -126,12 +133,12 @@ contract CrowdFundingPlatform is UUPSProxiable {
 
     /**
      * @notice Initializing new crowdfunding project
-     * @dev
-     * @dev
-     *
-     *
-     * @param _fundingGoal
-     * @param _timeline
+     * @dev Steps:
+     *      Increasing the value of counter by one
+     *      Assigning the appropriate values for the newly created project
+     *      Emit an event
+     * @param _fundingGoal the funds that are required for a project to be successful
+     * @param _timeline the maximal timeline of the project
      */
     function initializeCrowdfundingProject(uint256 _fundingGoal, uint256 _timeline)
         isBeforeDeadline(_timeline)
@@ -150,17 +157,13 @@ contract CrowdFundingPlatform is UUPSProxiable {
         emit InitializeCrowdfundingProject(crowdFundingProjects[counter]);
     }
 
-
     /**
-     * @notice Initializing new crowdfunding project
-     * @dev
-     * @dev
-     *
-     * Steps:
-     * 1. Exceed the timeline of the project
-     * 2. Make the project unsuccessful
-     *
-     * @param projectId
+     * @notice Terminating an ongoing crowdfunding project
+     * @dev Steps:
+     *      Exceed the timeline of the project
+     *      Make the project unsuccessful
+     *      Emit an event
+     * @param projectId the id of the project
      */
     function terminateCrowdfundingProject(uint256 projectId)
         projectExists(projectId)
@@ -169,134 +172,136 @@ contract CrowdFundingPlatform is UUPSProxiable {
         onlyIfNotSuccessful(projectId)
         external
     {
-        crowdFundingProjects[projectId].timeline = 0;
-        crowdFundingProjects[projectId].successful = false;
-        emit TerminateCrowdfundingProject(crowdFundingProjects[projectId], msg.sender);
+        CrowdFundingProject storage crowdFundingProject = crowdFundingProjects[projectId];
+        crowdFundingProject.timeline = 0;
+        crowdFundingProject.successful = false;
+        emit TerminateCrowdfundingProject(crowdFundingProject, msg.sender);
     }
 
     /**
-     * @notice Investing Funds function
-     * @dev
-     *
-     * Steps:
-     * 1. Check if the project exists and if it's still going, i.e. not successful, fundingGoal not achieved
-     * 2. Amount > 0
-     * 3. transfer the funds to the project
-	 * 4. update the invested funds in the crowdFundingProjects and customerInvestedFunds mappings
-     * 5. If after the transfer, the invested funds are greater or equal the funding goal, then make the project successful
-     * 6. Emit an event
-     *
-     * @param _token
-     * @param projectId
-     * @param amount
+     * @notice Investing funds in a crowdfunding project
+     * @dev Steps:
+     *      Check if the project exists and if it's before the timeline
+     *      Check is @param amount > 0
+     *      Transfer the funds to the project
+	 *      Update the invested funds in the crowdFundingProjects and customerInvestedFunds mappings
+     *      If after the transfer, the invested funds are greater or equal the funding goal, then make the project successful
+     *      Emit an event
+     * @param projectId the id of the crowdfunding project
+     * @param amount amount of funds to be invested
      */
-    function investFunds(IERC20 _token, uint256 projectId, uint256 amount)
+    function investFunds(uint256 projectId, uint256 amount)
         projectExists(projectId)
         isBeforeTimeline(crowdFundingProjects[projectId].timeline)
         external
     {
+        CrowdFundingProject storage crowdFundingProject = crowdFundingProjects[projectId];
         require(amount > 0, "Amount cannot be equal to zero!");
-        require(!crowdFundingProjects[projectId].successful, "The project has already achieved its goal!");
+        require(!crowdFundingProject.successful, "The project has already achieved its goal!");
 
-        _token.safeTransferFrom(msg.sender, address(this), amount);
+        FundMeToken.safeTransferFrom(msg.sender, address(this), amount);
 
-        crowdFundingProjects[projectId].investedFunds += amount;
+        crowdFundingProject.investedFunds += amount;
         customerInvestedFunds[projectId][msg.sender] += amount;
-        if (crowdFundingProjects[projectId].fundingGoal <= crowdFundingProjects[projectId].investedFunds) {
-            crowdFundingProjects[projectId].successful = true;
+        if (crowdFundingProject.fundingGoal <= crowdFundingProject.investedFunds) {
+            crowdFundingProject.successful = true;
         }
 
-        emit FundsInvested(_token, crowdFundingProjects[projectId], amount, msg.sender);
+        emit FundsInvested(FundMeToken, crowdFundingProject, amount, msg.sender);
     }
 
     /**
      * @notice Revoking Funds function
-     * @dev
-     *
-     * Steps:
-     * 1. Exceed the timeline of the project
-     * 2. Make the project unsuccessful
-     *
-     * @param _token
-     * @param projectId
-     * @param amount
+     * @dev Steps:
+     *      Check if the product exists and if it's before its timeline
+     *      Check if investor has any investments in the particular project
+     *      Check if the project already achieved its goal
+     *      Transfer the requested amount to the investor
+     *      Decrease the invested funds in the project
+     *      Decrease the amount of funds in the mapping customerInvestedFunds for the investor
+     *      Emit an event
+     * @param projectId the id of the crowdfunding project
+     * @param amount amount of funds to be revoked
      */
-    function revokeFunds(IERC20 _token, uint256 projectId, uint256 amount)
+    function revokeFunds(uint256 projectId, uint256 amount)
         external
         projectExists(projectId)
         isBeforeTimeline(crowdFundingProjects[projectId].timeline)
         onlyNonRefundedInvestors(projectId)
     {
+        uint256 _investedFunds = customerInvestedFunds[projectId][msg.sender];
+        CrowdFundingProject storage crowdFundingProject = crowdFundingProjects[projectId];
         require(amount > 0, "Amount cannot be equal to zero!");
-        require(!crowdFundingProjects[projectId].successful, "The project has already achieved its goal!");
-        require(customerInvestedFunds[projectId][msg.sender] >= amount, "You don't have that amount of tokens!");
+        require(!crowdFundingProject.successful, "The project has already achieved its goal!");
+        require(_investedFunds >= amount, "You don't have that amount of tokens!");
 
-        _token.transfer(msg.sender, amount);
+        FundMeToken.transfer(msg.sender, amount);
 
-        crowdFundingProjects[projectId].investedFunds -= amount;
+        crowdFundingProject.investedFunds -= amount;
         customerInvestedFunds[projectId][msg.sender] -= amount;
 
-        emit FundsRevoked(_token, crowdFundingProjects[projectId], customerInvestedFunds[projectId][msg.sender], msg.sender);
+        emit FundsRevoked(FundMeToken, crowdFundingProject, _investedFunds, msg.sender);
     }
 
     /**
      * @notice Withdrawing Funds function
-     * @dev
-     *
-     * Steps:
-     * 1. Check if it's the owner that invokes the function
-     * 2. Check if the project is existing, is finished and is successful, if yes go to 3.
-     * 3. transfer tokens to owner of the project
-     * 4. Delete the project
-     * 5. Emit an event
-     *
-     * @param _token
-     * @param projectId
-     * @param amount
+     * @dev Steps:
+     *      Check if the project is existing, is finished and is successful
+     *      Check if it's the owner that invokes the function
+     *      transfer tokens to owner of the project
+     *      Delete the project
+     *      Emit an event
+     * @param projectId the id of the crowdfunding project
      */
-    function withdrawFunds(IERC20 _token, uint256 projectId)
+    function withdrawFunds(uint256 projectId)
         projectExists(projectId)
         onlyOwnerOfProject(projectId)
         onlyIfSuccessful(projectId)
         external
     {
-        _token.safeTransfer(msg.sender, crowdFundingProjects[projectId].investedFunds);
+        CrowdFundingProject storage crowdFundingProject = crowdFundingProjects[projectId];
+        FundMeToken.safeTransfer(msg.sender, crowdFundingProject.investedFunds);
         delete crowdFundingProjects[projectId];
-        emit FundsWithdrawn(_token, crowdFundingProjects[projectId], crowdFundingProjects[projectId].investedFunds, msg.sender);
+        emit FundsWithdrawn(FundMeToken, crowdFundingProject, crowdFundingProject.investedFunds, msg.sender);
     }
 
     /**
      * @notice Refund Funds function
-     * @dev
-     *
-     * Steps:
-     * 1. Check if beneficiary has invested something in the particular campaign
-     *    1.1 if yes, has he already refunded all of his tokens -> if that's true prevent him from repeating this function
-     *    1.2 if no, go to 2.
-     * 2. Transfer tokens to beneficiary
-     * 3. If everyone has refunded successfully their tokens -> Delete the campaign
-     * 4. Emit an event
-     *
-     * @param _token
-     * @param projectId
-     * @param amount
+     * @dev Steps:
+    *       Checks if the project exists and if it's unsuccessful
+     *      Check if beneficiary has invested something in the particular project
+     *      If the investor has already refunded all of their tokens, prevent them from invoking this function for this project
+     *      Transfer tokens to beneficiary
+     *      Emit an event
+     *      Delete the investor's staked funds in the project
+     *      If everyone has refunded successfully their tokens, delete the project
+     * @param projectId the id of the crowdfunding project
      */
-    function refundFunds(IERC20 _token, uint256 projectId)
+    function refundFunds(uint256 projectId)
         projectExists(projectId)
         isPastTimeline(crowdFundingProjects[projectId].timeline)
         onlyIfNotSuccessful(projectId)
         onlyNonRefundedInvestors(projectId)
         external
     {
-        _token.safeTransfer(msg.sender, customerInvestedFunds[projectId][msg.sender]);
-        crowdFundingProjects[projectId].investedFunds -= customerInvestedFunds[projectId][msg.sender];
-        if (crowdFundingProjects[projectId].investedFunds == 0) {
+        uint256 _investedFunds = customerInvestedFunds[projectId][msg.sender];
+        CrowdFundingProject storage crowdFundingProject = crowdFundingProjects[projectId];
+        FundMeToken.safeTransfer(msg.sender, _investedFunds);
+        crowdFundingProject.investedFunds -= _investedFunds;
+
+        emit FundsRefunded(FundMeToken, crowdFundingProject, _investedFunds, msg.sender);
+
+        if (crowdFundingProject.investedFunds == 0) {
             delete crowdFundingProjects[projectId];
         }
         delete customerInvestedFunds[projectId][msg.sender];
-        emit FundsRefunded(_token, crowdFundingProjects[projectId], customerInvestedFunds[projectId][msg.sender], msg.sender);
     }
 
+    /**
+     * @notice Updates the address of the logic contract
+     * @dev Can be invoked only by the owner of the platform contract
+     * @param newAddress the address of the new logic contract
+     */
     function updateCode(address newAddress) onlyOwner override external {
         _updateCodeAddress(newAddress);
     }
