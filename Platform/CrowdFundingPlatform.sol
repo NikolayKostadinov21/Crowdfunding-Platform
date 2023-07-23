@@ -126,27 +126,9 @@ contract CrowdFundingPlatform is UUPSProxiable {
         _;
     }
 
-    /// @dev Checks if the timeline has exceeded
-    modifier isPastTimeline(uint256 timeline) {
-        if (!(block.timestamp > timeline)) revert TIMELINE_HASNT_EXCEEDED();
-        _;
-    }
-
-    /// @dev Checks if the deadline has exceeded
-    modifier isBeforeDeadline(uint256 timeline) {
-        if (!(timeline <= maxDuration)) revert THE_DEADLINE_HAS_EXCEEDED();
-        _;
-    }
-
     /// @dev Checks if the timeline isn't reached
     modifier isBeforeTimeline(uint256 timeline) {
         if (!(block.timestamp <= timeline)) revert THE_TIMELINE_HAS_EXCEEDED();
-        _;
-    }
-
-    /// @dev Checks if the successful flag for a project is true
-    modifier onlyIfSuccessful(uint256 projectId) {
-        if (!(crowdFundingProjects[projectId].successful)) revert PROJECT_ISNT_SUCCESSFUL();
         _;
     }
 
@@ -178,9 +160,9 @@ contract CrowdFundingPlatform is UUPSProxiable {
      * @param _timeline the maximal timeline of the project
      */
     function initializeCrowdfundingProject(uint256 _fundingGoal, uint256 _timeline)
-        isBeforeDeadline(_timeline)
         external
     {
+        if (!(_timeline <= maxDuration)) revert THE_DEADLINE_HAS_EXCEEDED();
         counter += 1;
 
         crowdFundingProjects[counter] = CrowdFundingProject({
@@ -293,11 +275,13 @@ contract CrowdFundingPlatform is UUPSProxiable {
     function withdrawFunds(uint256 projectId)
         projectExists(projectId)
         onlyOwnerOfProject(projectId)
-        onlyIfSuccessful(projectId)
         external
     {
         CrowdFundingProject storage crowdFundingProject = crowdFundingProjects[projectId];
+        if (!(crowdFundingProject.successful)) revert PROJECT_ISNT_SUCCESSFUL();
+
         FundMeToken.safeTransfer(msg.sender, crowdFundingProject.investedFunds);
+
         delete crowdFundingProjects[projectId];
         emit FundsWithdrawn(FundMeToken, crowdFundingProject, crowdFundingProject.investedFunds, msg.sender);
     }
@@ -316,13 +300,15 @@ contract CrowdFundingPlatform is UUPSProxiable {
      */
     function refundFunds(uint256 projectId)
         projectExists(projectId)
-        isPastTimeline(crowdFundingProjects[projectId].timeline)
         onlyIfNotSuccessful(projectId)
         onlyNonRefundedInvestors(projectId)
         external
     {
         uint256 _investedFunds = customerInvestedFunds[projectId][msg.sender];
         CrowdFundingProject storage crowdFundingProject = crowdFundingProjects[projectId];
+
+        if (!(block.timestamp > crowdFundingProject.timeline)) revert TIMELINE_HASNT_EXCEEDED();
+
         FundMeToken.safeTransfer(msg.sender, _investedFunds);
         crowdFundingProject.investedFunds -= _investedFunds;
 
