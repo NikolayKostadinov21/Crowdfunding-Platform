@@ -2,18 +2,17 @@
 
 pragma solidity ^0.8.20;
 
+import { UUPSUtils } from "./UUPSUtils.sol";
 import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/proxy/Proxy.sol";
-import { UUPSUtils } from "./UUPSUtils.sol";
+
 /**
  * @title UUPS (Universal Upgradeable Proxy Standard) Proxy
  *
  * NOTE:
  * - Compliant with [Universal Upgradeable Proxy Standard](https://eips.ethereum.org/EIPS/eip-1822)
- * - Compiiant with [Standard Proxy Storage Slots](https://eips.ethereum.org/EIPS/eip-1967)
- * - Implements delegation of calls to the crowdfunding platform contract, with proper forwarding of
- *   return values and bubbling of failures.
- * - It defines a fallback function that delegates all calls to the implementation.
+ * - Compliant with [Standard Proxy Storage Slots](https://eips.ethereum.org/EIPS/eip-1967)
+ * - It defines a fallback function that delegates all calls to the implementation
  */
 contract UUPSProxy is Proxy {
     /**
