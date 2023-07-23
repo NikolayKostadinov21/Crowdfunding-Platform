@@ -13,7 +13,6 @@ contract CrowdFundingPlatform is UUPSProxiable {
 
     uint256 maxDuration;
     uint256 public counter;
-    address owner;
 
     struct CrowdFundingProject {
         uint256 investedFunds;
@@ -34,10 +33,14 @@ contract CrowdFundingPlatform is UUPSProxiable {
     mapping(uint256 => CrowdFundingProject) crowdFundingProjects;
     mapping(uint256 => mapping(address => uint256)) public customerInvestedFunds;
 
+    constructor() {
+        _disableInitializers();
+    }
+
     function initialize(uint256 _maxDuration) initializer public {
         require(_maxDuration > block.timestamp, "The duration cannot be before the current time");
+        __Ownable_init(msg.sender);
         maxDuration = _maxDuration;
-        owner = msg.sender;
     }
 
     modifier projectExists(uint256 projectId) {
@@ -77,11 +80,6 @@ contract CrowdFundingPlatform is UUPSProxiable {
 
     modifier onlyNonRefundedInvestors(uint256 projectId) {
         require(customerInvestedFunds[projectId][msg.sender] > 0, "Only non refunded investors allowed!");
-        _;
-    }
-
-    modifier onlyOwner {
-        require(msg.sender == owner, "Unauthorized!");
         _;
     }
 
@@ -178,7 +176,7 @@ contract CrowdFundingPlatform is UUPSProxiable {
         emit FundsRefunded(_token, crowdFundingProjects[projectId], customerInvestedFunds[projectId][msg.sender], msg.sender);
     }
 
-    function updateCode(address newAddress) onlyOwner external {
+    function updateCode(address newAddress) onlyOwner override external {
         _updateCodeAddress(newAddress);
     }
 }

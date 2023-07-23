@@ -3,11 +3,14 @@
 pragma solidity ^0.8.20;
 
 import { UUPSUpgradeable } from "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/proxy/utils/UUPSUpgradeable.sol";
-import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/proxy/utils/Initializable.sol";
+import "https://github.com/OpenZeppelin/openzeppelin-contracts-upgradeable/blob/master/contracts/access/OwnableUpgradeable.sol";
 import { UUPSUtils } from "./UUPSUtils.sol";
 
-contract UUPSProxiable is Initializable {
+abstract contract UUPSProxiable is OwnableUpgradeable {
     event CodeUpdated(bytes32 uuid, address codeAddress);
+
+    function updateCode(address newAddress) external virtual;
+
     /**
      * @dev Get current implementation code address.
      */
