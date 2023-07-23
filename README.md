@@ -13,6 +13,14 @@
 
 # Architecture
 
+The Crowdfunding platform is composed of 6 contracts where 3 of them: `UUPSUtils.sol, UUPSProxy.sol, UUPSProxiable.sol` are here to help implement the Universal Upgradeable Proxy Standard [EIP-1822](https://eips.ethereum.org/EIPS/eip-1822). The reason for this choice is its gas efficiency and flexibility for removing upgradeability.
+
+The whole crowdfunding platform functionality is implemented in one contract (CrowdFundingPlatform.sol). As the project is not very complex and large, this contract isn't segregated into helper contracts, instead all the main logic is there.
+
+![UUPS workflow](<Images/UUPS workflow.png>)
+
+FundMeFaucet and FundMeToken contracts are there to provide custom ERC20 functionality for funding each crowdfunding project. You can see their workflow below.
+
 # Crowdfunding project workflow
 
 ## Obtaining FundMe tokens
@@ -30,7 +38,7 @@ Note: You cannot request FundMe tokens until the lock time of 1 minute is surpas
 ```
 
 Here is an image illustrating just that:
-![Obtaining FundMe tokens workflow](<Images/Obtaining FundMe tokens workflow.png>)
+![FundMe tokens workflow](<Images/FundMe tokens workflow.png>)
 
 ## CrowdFundingPlatform contract functions
 
