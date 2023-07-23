@@ -50,7 +50,7 @@ contract FundMeFaucet {
      * @notice Function to exchange ETH for FundMe tokens
      * @dev Adds the exchanged funds to the exchangedFunds mapping for the respective address
      */
-    function exchangeFunds() external payable {
+    function depositFunds() external payable {
         require(msg.value != 0, "Exchanging value cannot be equal to zero!");
         exchangedFunds[msg.sender] += msg.value;
     }
