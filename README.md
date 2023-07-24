@@ -2,7 +2,7 @@
 
 # Overview
 
-| Contracts                 | Purpose                                                                   | SLOC |
+| Contracts                 | Description                                                               | SLOC |
 |---------------------------|---------------------------------------------------------------------------|------|
 | CrowdFundingPlatform.sol  | Crowdfunding Platform where you can create projects and invest in them    | 335  |
 | FundMeFaucet.sol          | Represents the faucet where you can request FundMe tokens                 | 75   |
@@ -13,10 +13,17 @@
 
 # Architecture
 
-The Crowdfunding platform is composed of 6 contracts where 3 of them: `UUPSUtils.sol, UUPSProxy.sol, UUPSProxiable.sol` are here to help implement the Universal Upgradeable Proxy Standard [EIP-1822](https://eips.ethereum.org/EIPS/eip-1822). The reason for this choice is its gas efficiency and flexibility for removing upgradeability.
+The Crowdfunding platform is composed of 6 contracts where 3 of them: `UUPSUtils.sol, UUPSProxy.sol, UUPSProxiable.sol` are here to help implement the Universal Upgradeable Proxy Standard [EIP-1822](https://eips.ethereum.org/EIPS/eip-1822). The reason for choosing EIP-1822 is its gas efficiency and flexibility for removing upgradeability.
+
+`UUPSProxy` is compatible with [EIP-1967](https://eips.ethereum.org/EIPS/eip-1967) and defines a fallback function that delegates all calls to the implementation contract - `CrowdFundingPlatform.sol`.
+
+`UUPSUtils` is a library helping with reusing the set and get implementation functions
+
+`UUPSProxiable` is an abstract contract containing primarily the `_updateCodeAddress` functionality to change the implementation contract. It also inherits `OwnableUpgradeable OZ contract`
 
 The whole crowdfunding platform functionality is implemented in one contract (CrowdFundingPlatform.sol). As the project is not very complex and large, this contract isn't segregated into helper contracts, instead all the main logic is there.
 
+Here is a visual representation:
 ![UUPS workflow](<Images/UUPS workflow.png>)
 
 FundMeFaucet and FundMeToken contracts are there to provide custom ERC20 functionality for funding each crowdfunding project. You can see their workflow below.
@@ -41,6 +48,7 @@ Here is an image illustrating just that:
 ![FundMe tokens workflow](<Images/FundMe tokens workflow.png>)
 
 ## CrowdFundingPlatform contract functions
+Below are the available functions in the main smart contract. The project owner can initialize a new crowdfunding project. It's possible to terminate it if the project's timeline hasn't been reached, and it is not successful. As for the investors, they can invest funds in the form of FundMe tokens in any project they desire. If they change their minds, they can revoke a certain amount of their investments (if any) and get their funds back. Depending on whether the project is successful, the project owner can withdraw the funds. If the project isn't successful, the owner cannot withdraw the invested funds in the project; instead, the investors can refund their deposits.
 
 #### initializeCrowdfundingProject
 The function helps initialize new crowdfunding project.
@@ -115,6 +123,3 @@ If certain project fails to reach the funding goal until its timeline, all inves
 * Updates the address of the logic contract
 * Can be invoked only by the owner of the platform contract
 * Implementation is in UUPSProxiable contract
-
-
-# Tests
