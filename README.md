@@ -1,5 +1,7 @@
 # Crowdfunding Platform
 
+The platform offers various functions, allowing the project owner to initialize crowdfunding projects and investors to invest funds using FundMe tokens. Investors have the option to revoke their investments and receive their funds back. If the project is successful, the owner can withdraw the funds, but if it fails, investors can refund their deposits.
+
 # Overview
 
 | Contracts                 | Description                                                               | SLOC |
