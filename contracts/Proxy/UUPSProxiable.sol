@@ -2,9 +2,9 @@
 
 pragma solidity ^0.8.20;
 
-import { UUPSUpgradeable } from "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/proxy/utils/UUPSUpgradeable.sol";
+import { UUPSUpgradeable } from "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
 import { UUPSUtils } from "./UUPSUtils.sol";
-import "https://github.com/OpenZeppelin/openzeppelin-contracts-upgradeable/blob/master/contracts/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
 /**
  * @title UUPSProxiable (Universal Upgradeable Proxy Standard) Proxiable abstract contract

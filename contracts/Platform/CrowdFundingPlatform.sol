@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0
 
-import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/ERC20/IERC20.sol";
-import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../Proxy/UUPSProxiable.sol";
 
 pragma solidity ^0.8.20;
@@ -115,7 +115,7 @@ contract CrowdFundingPlatform is UUPSProxiable {
      */
     function initialize(uint256 _maxDuration, IERC20 _fundMeToken) initializer public {
         require(_maxDuration > block.timestamp, "The duration cannot be before the current time");
-        __Ownable_init(msg.sender);
+        __Ownable_init(); /// @dev In newer versions, the __Ownable_init function expects parameter
         maxDuration = _maxDuration;
         FundMeToken = _fundMeToken;
     }
