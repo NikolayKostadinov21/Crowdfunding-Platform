@@ -134,3 +134,5 @@ If certain project fails to reach the funding goal until its timeline, all inves
 3. Open `hardhat.config.ts` and change etherscan's apiKey, infura's apiKey with their respective apiKeys. On the `accounts` insert your metamask private key.
 4. Then run the command `npx hardhat run scripts/deploy.ts --network Sepolia` to deploy the contracts.
 5. Interact with the contracts!
+* To verify a contract, use `npx hardhat verify --network Sepolia <contract_address>`
+* For the FundMe contract you may use: `npx hardhat verify --contract "contracts/Token/FundMeToken.sol:FundMeToken"  --network Sepolia 0x9470AbEd6474E97237F1128e83f839fe44150eA5 100000000000000000000000`
