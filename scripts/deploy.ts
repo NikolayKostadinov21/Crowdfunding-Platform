@@ -18,7 +18,7 @@ async function main() {
     const maxDuration = 1000000000000000;
 
     const CrowdFundingPlatform = await ethers.getContractFactory("CrowdFundingPlatform");
-    const crowdFundingPlatform = await upgrades.deployProxy(CrowdFundingPlatform, [maxDuration, await fundMeToken.getAddress()]);
+    const crowdFundingPlatform = await upgrades.deployProxy(CrowdFundingPlatform, [maxDuration, await fundMeToken.getAddress()], { initializer: 'initialize', kind: 'uups'});
     crowdFundingPlatform.waitForDeployment();
 
     console.log('FundMeToken deployed to:', await fundMeToken.getAddress());
