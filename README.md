@@ -125,3 +125,11 @@ If certain project fails to reach the funding goal until its timeline, all inves
 * Updates the address of the logic contract
 * Can be invoked only by the owner of the platform contract
 * Implementation is in UUPSProxiable contract
+
+
+# Testing
+1. Clone this repository.
+2. Run command: `yarn` to install dependencies.
+3. Open `hardhat.config.ts` and change etherscan's apiKey, infura's apiKey with their respective apiKeys. On the `accounts` insert your metamask private key.
+4. Then run the command `npx hardhat run scripts/deploy.ts --network Sepolia` to deploy the contracts.
+5. Interact with the contracts!
