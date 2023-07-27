@@ -11,7 +11,7 @@ contract FundMeToken is ERC20 {
     /**
      * @dev Constructor that gives sender all of existing tokens.
      */
-    constructor(address faucet, uint256 initialSupply) ERC20("FundMe Token", "FMT") {
-        _mint(faucet, initialSupply);
+    constructor(uint256 initialSupply) ERC20("FundMe Token", "FMT") {
+        _mint(msg.sender, initialSupply);
     }
 }

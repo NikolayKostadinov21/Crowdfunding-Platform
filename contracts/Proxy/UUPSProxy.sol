@@ -3,6 +3,7 @@
 pragma solidity ^0.8.20;
 
 import { UUPSUtils } from "./UUPSUtils.sol";
+import { CustomErrors } from "../Utils/CustomErrors.sol";
 import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import "@openzeppelin/contracts/proxy/Proxy.sol";
 
@@ -21,8 +22,8 @@ contract UUPSProxy is Proxy {
      * @param initialAddress Initial logic contract code address to be used.
      */
     function initializeProxy(address initialAddress) external {
-        require(initialAddress != address(0), "UUPSProxy: zero address");
-        require(UUPSUtils.implementation() == address(0), "UUPSProxy: already initialized");
+        if (initialAddress == address(0)) revert CustomErrors.UUPSPROXY_ZERO_ADDRESS();
+        if (UUPSUtils.implementation() != address(0)) revert CustomErrors.UUPSPROXY_ALREADY_INITIALIZED();
         UUPSUtils.setImplementation(initialAddress);
     }
 

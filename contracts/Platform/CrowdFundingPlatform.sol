@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0
 
+import { CustomErrors } from "../Utils/CustomErrors.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../Proxy/UUPSProxiable.sol";
@@ -15,7 +16,7 @@ contract CrowdFundingPlatform is UUPSProxiable {
     using SafeERC20 for IERC20;
 
     /// @notice The maximal duration of the crowdfunding platform
-    uint256 maxDuration;
+    uint256 public maxDuration;
     /// @notice Counter that increments on every new project. Acts as ID for project
     uint256 public counter;
     /// @notice FundMe token
@@ -35,43 +36,6 @@ contract CrowdFundingPlatform is UUPSProxiable {
         /// @notice Flag marking whether a project is successful
         bool successful;
     }
-
-    // ================================================================
-    // |                           ERRORS                             |
-    // ================================================================
-
-    /// @notice Error thrown if the project doesn't exists
-    error PROJECT_DOESNT_EXIST();
-
-    /// @notice Error thrown if the timeline hasn't exceeded
-    error TIMELINE_HASNT_EXCEEDED();
-
-    /// @notice Error thrown if the deadline has exceeded
-    error THE_DEADLINE_HAS_EXCEEDED();
-
-    /// @notice Error thrown if the timeline has exceeded
-    error THE_TIMELINE_HAS_EXCEEDED();
-
-    /// @notice Error thrown if project isn't successful, i.e. you can't withdraw
-    error PROJECT_ISNT_SUCCESSFUL();
-
-    /// @notice Error thrown if project is successful, i.e. you can't refund
-    error PROJECT_IS_SUCCESSFUL();
-
-    /// @notice Error thrown if non-owner of a project invokes particular function
-    error NOT_THE_OWNER_OF_THE_PROJECT();
-
-    /// @notice Error thrown when only non refunded investors are allowed
-    error ONLY_NON_REFUNDED_INVESTORS_ALLOWED();
-
-    /// @notice Error thrown if the amount is equal to zero
-    error AMOUNT_CANNOT_BE_ZERO();
-
-    /// @notice Error thrown if the project has already achieved its goal
-    error PROJECT_ALREADY_ACHIEVED_ITS_GOAL();
-
-    /// @notice Error thrown when you don't have that amount of tokens
-    error NOT_ENOUGH_TOKENS();
 
     // ================================================================
     // |                           EVENTS                             |
@@ -101,9 +65,9 @@ contract CrowdFundingPlatform is UUPSProxiable {
      */
     mapping(uint256 => mapping(address => uint256)) public customerInvestedFunds;
     /// @notice crowdFundingProjects Stores all crowdfunding projects by their corresponding id
-    mapping(uint256 => CrowdFundingProject) crowdFundingProjects;
+    mapping(uint256 => CrowdFundingProject) public crowdFundingProjects;
 
-    /// @dev _disableInitializers is used to prevent initialization of the implementation contract
+    /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
     }
@@ -122,31 +86,31 @@ contract CrowdFundingPlatform is UUPSProxiable {
 
     /// @dev Checks if the project exists in the platform
     modifier projectExists(uint256 projectId) {
-        if (!crowdFundingProjects[projectId].exists) revert PROJECT_DOESNT_EXIST();
+        if (!crowdFundingProjects[projectId].exists) revert CustomErrors.PROJECT_DOESNT_EXIST();
         _;
     }
 
     /// @dev Checks if the timeline isn't reached
     modifier isBeforeTimeline(uint256 timeline) {
-        if (!(block.timestamp <= timeline)) revert THE_TIMELINE_HAS_EXCEEDED();
+        if (block.timestamp > timeline) revert CustomErrors.THE_TIMELINE_HAS_EXCEEDED();
         _;
     }
 
     /// @dev Checks if the successful flag for a project is false
     modifier onlyIfNotSuccessful(uint256 projectId) {
-        if (crowdFundingProjects[projectId].successful) revert PROJECT_IS_SUCCESSFUL();
+        if (crowdFundingProjects[projectId].successful) revert CustomErrors.PROJECT_IS_SUCCESSFUL();
         _;
     }
 
     /// @dev Checks if the invoker is the owner of the project
     modifier onlyOwnerOfProject(uint256 projectId) {
-        if (!(msg.sender == crowdFundingProjects[projectId].owner)) revert NOT_THE_OWNER_OF_THE_PROJECT();
+        if (!(msg.sender == crowdFundingProjects[projectId].owner)) revert CustomErrors.NOT_THE_OWNER_OF_THE_PROJECT();
         _;
     }
 
     /// @dev Checks if you have investments in a project and if you have already been refunded for your investments
     modifier onlyNonRefundedInvestors(uint256 projectId) {
-        if (!(customerInvestedFunds[projectId][msg.sender] > 0)) revert ONLY_NON_REFUNDED_INVESTORS_ALLOWED();
+        if (!(customerInvestedFunds[projectId][msg.sender] > 0)) revert CustomErrors.ONLY_NON_REFUNDED_INVESTORS_ALLOWED();
         _;
     }
 
@@ -162,7 +126,7 @@ contract CrowdFundingPlatform is UUPSProxiable {
     function initializeCrowdfundingProject(uint256 _fundingGoal, uint256 _timeline)
         external
     {
-        if (!(_timeline <= maxDuration)) revert THE_DEADLINE_HAS_EXCEEDED();
+        if (_timeline > maxDuration) revert CustomErrors.THE_DEADLINE_HAS_EXCEEDED();
         counter += 1;
 
         crowdFundingProjects[counter] = CrowdFundingProject({
@@ -215,8 +179,8 @@ contract CrowdFundingPlatform is UUPSProxiable {
         external
     {
         CrowdFundingProject storage crowdFundingProject = crowdFundingProjects[projectId];
-        if (!(amount > 0)) revert AMOUNT_CANNOT_BE_ZERO();
-        if (crowdFundingProject.successful) revert PROJECT_ALREADY_ACHIEVED_ITS_GOAL();
+        if (amount == 0) revert CustomErrors.AMOUNT_CANNOT_BE_ZERO();
+        if (crowdFundingProject.successful) revert CustomErrors.PROJECT_ALREADY_ACHIEVED_ITS_GOAL();
 
         FundMeToken.safeTransferFrom(msg.sender, address(this), amount);
 
@@ -250,9 +214,9 @@ contract CrowdFundingPlatform is UUPSProxiable {
     {
         uint256 _investedFunds = customerInvestedFunds[projectId][msg.sender];
         CrowdFundingProject storage crowdFundingProject = crowdFundingProjects[projectId];
-        if (!(amount > 0)) revert AMOUNT_CANNOT_BE_ZERO();
-        if (crowdFundingProject.successful) revert PROJECT_ALREADY_ACHIEVED_ITS_GOAL();
-        if (_investedFunds < amount) revert NOT_ENOUGH_TOKENS();
+        if (amount == 0) revert CustomErrors.AMOUNT_CANNOT_BE_ZERO();
+        if (crowdFundingProject.successful) revert CustomErrors.PROJECT_ALREADY_ACHIEVED_ITS_GOAL();
+        if (_investedFunds < amount) revert CustomErrors.NOT_ENOUGH_TOKENS();
 
         FundMeToken.transfer(msg.sender, amount);
 
@@ -278,7 +242,7 @@ contract CrowdFundingPlatform is UUPSProxiable {
         external
     {
         CrowdFundingProject storage crowdFundingProject = crowdFundingProjects[projectId];
-        if (!(crowdFundingProject.successful)) revert PROJECT_ISNT_SUCCESSFUL();
+        if (!crowdFundingProject.successful) revert CustomErrors.PROJECT_ISNT_SUCCESSFUL();
 
         FundMeToken.safeTransfer(msg.sender, crowdFundingProject.investedFunds);
 
@@ -307,7 +271,7 @@ contract CrowdFundingPlatform is UUPSProxiable {
         uint256 _investedFunds = customerInvestedFunds[projectId][msg.sender];
         CrowdFundingProject storage crowdFundingProject = crowdFundingProjects[projectId];
 
-        if (!(block.timestamp > crowdFundingProject.timeline)) revert TIMELINE_HASNT_EXCEEDED();
+        if (block.timestamp <= crowdFundingProject.timeline) revert CustomErrors.TIMELINE_HASNT_EXCEEDED();
 
         FundMeToken.safeTransfer(msg.sender, _investedFunds);
         crowdFundingProject.investedFunds -= _investedFunds;

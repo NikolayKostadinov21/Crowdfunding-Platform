@@ -4,6 +4,7 @@ pragma solidity ^0.8.20;
 
 import { UUPSUpgradeable } from "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
 import { UUPSUtils } from "./UUPSUtils.sol";
+import { CustomErrors } from "../Utils/CustomErrors.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
 /**
@@ -53,15 +54,10 @@ abstract contract UUPSProxiable is OwnableUpgradeable {
      */
     function _updateCodeAddress(address newAddress) internal
     {
-        require(UUPSUtils.implementation() != address(0), "UUPSProxiable: not upgradable");
-        require(
-            proxiableUUID() == UUPSProxiable(newAddress).proxiableUUID(),
-            "UUPSProxiable: not compatible logic"
-        );
-        require(
-            address(this) != newAddress,
-            "UUPSProxiable: proxy loop"
-        );
+        if (UUPSUtils.implementation() == address(0)) revert CustomErrors.UUPSPROXIABLE_NOT_UPGRADABLE();
+        if (proxiableUUID() != UUPSProxiable(newAddress).proxiableUUID()) revert CustomErrors.UUPSPROXIABLE_NOT_COMPATIBLE_LOGIC();
+        if (address(this) == newAddress) revert CustomErrors.UUPSPROXIABLE_PROXY_LOOP();
+
         UUPSUtils.setImplementation(newAddress);
         emit CodeUpdated(proxiableUUID(), newAddress);
     }
