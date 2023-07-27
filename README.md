@@ -12,6 +12,7 @@ The platform offers various functions, allowing the project owner to initialize 
 | UUPSUtils.sol             | Utils Shared Library to facilitate Proxy and Proxiable contracts          | 38   |
 | UUPSProxy.sol             | Proxy contract compliant with eip-1822 and eip-1967                       | 34   |
 | UUPSProxiable.sol         | Proxiable abstract contract                                               | 68   |
+| CustomErrors.sol          | Custom errors for every contract                                          | 84   |
 
 # Architecture
 
